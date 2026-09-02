@@ -1,0 +1,35 @@
+---
+title: "Week 1 Assignment"
+author: "David Melchor"
+format: html
+editor: visual
+---
+
+## Introduction
+
+I'm very curious about the field of pharmaceutical research and clinical trials and I am wondering about what it would be like to work at a company like Genentech or Gilead Sciences after graduation.
+
+For this first assignment, I want to analyze a clinical dataset focused on patient demographic and health-related attributes aimed at predicting the risk of hypertension. The raw data source can be accessed directly here: [Kaggle Hypertension Risk Dataset](https://www.kaggle.com/datasets/khan1803115/hypertension-risk-model-main).
+
+## Business & Data Science Question
+
+- **Business Question:** How does patient demographic and health-related attributes relate to elevated resting blood pressure, and can we classify elevated risk across patient demographics?
+- **Data Science Question:** How can I work with clinical patient records to evaluate elevated resting blood pressure and establish structured risk profiles using R?
+
+## Strategy & Technical Approach
+
+1.  **Data Import:** The raw CSV data will be imported directly into R from the URL cited in the introduction section.
+2.  **Data Cleaning & Wrangling:**
+    - Check data types
+    - Look for missing values
+    - Clean column headers
+    - Recode variables as needed
+    - Select a subset of data needed for analysis
+3.  **Exploratory Visualizations:** Use `ggplot2` to visualize relationships and identify patient risks.
+
+## Anticipated Data Challenges
+
+- **Missing Data Handling:** The dataset may contain missing values records that may require filtering.
+- **Data Types:** May need to create `factors` to organize categorical variables.
+- **Outliers:** Check for extreme values in variables.
+
