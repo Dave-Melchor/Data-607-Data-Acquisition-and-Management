@@ -4,6 +4,7 @@ author: "David Melchor"
 format: 
   html:
     embed-resources: true
+    toc: true
 editor: visual
 ---
 
@@ -11,16 +12,16 @@ editor: visual
 
 I'm very curious about the field of pharmaceutical research and clinical trials and I am wondering about what it would be like to work at a company like Genentech or Gilead Sciences after graduation.
 
-For this first assignment, I want to analyze a clinical dataset focused on patient demographic and health-related attributes aimed at predicting the risk of hypertension. The raw data source can be accessed directly here: [Kaggle Hypertension Risk Dataset](https://www.kaggle.com/datasets/khan1803115/hypertension-risk-model-main).
+For this first assignment, I want to analyze a clinical dataset focused on patient demographic and health-related attributes aimed at evaluating cardiovascular risk and resting blood pressure metrics. The raw data source can be accessed directly from the [UCI Machine Learning Data Repository](https://archive.ics.uci.edu/dataset/45/heart+disease), using `ucimlrepo` R package. Technical setup and package usage guidelines follow the documentation outlined on the [ucimlrepo R Package Site](https://r-pkg.thecoatlessprofessor.com/ucimlrepo/)
 
 ## Business & Data Science Question
 
-- **Business Question:** How does patient demographic and health-related attributes relate to elevated resting blood pressure, and can we classify elevated risk across patient demographics?
+- **Business Question:** Is resting blood pressure a contributor to poor heart disease outcomes?
 - **Data Science Question:** How can I work with clinical patient records to evaluate elevated resting blood pressure and establish structured risk profiles using R?
 
 ## Strategy & Technical Approach
 
-1.  **Data Import:** The raw CSV data will be imported directly into R from the URL cited in the introduction section.
+1.  **Data Import:** I will use the `ucimlrepo` package to import the dataset direclty into R.
 2.  **Data Cleaning & Wrangling:**
     - Check data types
     - Look for missing values
@@ -34,4 +35,135 @@ For this first assignment, I want to analyze a clinical dataset focused on patie
 - **Missing Data Handling:** The dataset may contain missing values records that may require filtering.
 - **Data Types:** May need to create `factors` to organize categorical variables.
 - **Outliers:** Check for extreme values in variables.
+
+## Installing and Loading Packages
+
+```{r}
+#| label: packages
+#| 
+# Install ucimlrepo and load the packages
+pacman::p_load(ucimlrepo, tidyverse)
+```
+
+## Loading the Data
+
+```{r}
+#| label: data-import
+
+# Fetch the dataset from the UCI data repository
+uci_data <- fetch_ucirepo(name = "Heart Disease")
+
+# Extract the original dataset
+bp_data <- uci_data$data$original
+```
+
+## Data Exploration and Cleaning
+```{r}
+#| label: data-exploration
+
+# Check out the data dictionary
+data_dictionary <- uci_data$variables
+
+# Check the data structure
+glimpse(bp_data)
+
+# Rename variables
+bp_data <- bp_data |> 
+  rename(
+    resting_bp  = trestbps,
+    cholesterol = chol,
+    fasting_bs  = fbs,
+    max_hr      = thalach,
+    exercise_angina = exang,
+    st_depression = oldpeak,
+    major_vessels = ca,
+    severity    = num,
+    chest_pain  = cp,
+    thallium_test = thal
+  )
+
+# Recode multi-level categorical variables into labeled factors
+bp_data <- bp_data |> 
+  mutate(
+    chest_pain = factor(chest_pain,
+                        level = c(1, 2, 3, 4),
+                        labels = c("Typical Angina", "Atypical Angina", "Non-Anginal", "Asymptomatic")),
+    slope = factor(slope,
+                   levels = c(1, 2, 3),
+                   labels = c("Upsloping", "Flat", "Downsloping")),
+    thallium_test = factor(thallium_test,
+                           levels = c(3, 6, 7),
+                           labels = c("Normal", "Fixed Defect", "Reversible Defect")),
+    sex = factor(sex,
+                 levels = c(0, 1),
+                 labels = c("Male", "Female")),
+    fasting_bs = factor(fasting_bs,
+                        levels = c(0, 1),
+                        labels = c("<120 mg/dl", ">120 mg/dl")),
+    exercise_angina = factor(exercise_angina,
+                             levels = c(0, 1),
+                             labels = c("No", "Yes")),
+    restecg = factor(restecg,
+                     levels = c(0, 1, 2),
+                     labels = c("Normal", "Having ST-T wave abnormality", "Showing ventricular hypertrophy")),
+    severity = factor(severity,
+                           levels = 0:4,
+                           labels = c("No disease", "Mild", "Moderate", "Severe", "Critical"))
+  )
+```
+
+## Create a New Subset for Data Analysis
+
+```{r}
+#| label: subset
+
+# Create a new subset for data analysis
+heart_risk <- bp_data |> 
+  select(age, sex, chest_pain, resting_bp, cholesterol, fasting_bs,
+         max_hr, severity)
+```
+
+## Explore Relationships With `ggplot`
+
+```{r}
+#| label: plot1
+
+heart_risk |> 
+  ggplot(
+    aes(
+      x = severity,
+      y = resting_bp,
+      fill = severity)) +
+  geom_boxplot() +
+  labs(
+    title = "Resting Blood Pressure Across Heart Disease Severity",
+    x = "Heart Disease Severity",
+    y = "Resting Blood Pressure (mmHg)",
+    fill = "Severity") +
+  theme(legend.position = "none")
+
+```
+
+## Conclusion
+
+The box plot of resting blood pressure across heart disease severity reveals the median resting blood pressure of patients experiencing No disease, and different levels of heart disease severity. For patients with No disease, Mild, Moderate and Severe heart disease, resting blood pressure remains stable at around 130 mmHg. Patients who experienced Critical heart disease severity have a noticeable higher resting blood pressure at about 145 mmHg. The graph also reveals an upward shift of the interquartile range of patients in the Critical heart disease severity group, suggesting that their resting blood pressure average tends to be higher than all the other groups and may contribute to more critical stages of heart disease. 
+
+## Next Steps
+
+Given that resting blood pressure is similar across the No disease, Mild, Moderate, and Severe categories, next steps asks for analytical expansion beyond resting blood pressure metrics to evaluate why patient groups have different cardiovascular risk profiles. Since resting blood pressure is very similar across these first 4 groups and severity is different, there must be other patient attributes besides resting blood pressure that contribute to the severity of heart disease.
+
+## AI Conversation Citation
+
+Gemini. (2026, September 4). [Response to a query about UCI Heart Disease dataset variable definitions]. Google.
+
+
+
+
+
+
+
+
+
+
+
 
