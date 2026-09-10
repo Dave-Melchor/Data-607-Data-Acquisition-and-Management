@@ -1,0 +1,428 @@
+---
+title: "Classification Metrics"
+author: "David Melchor"
+format: 
+  html:
+    embed-resources: true
+    toc: true
+editor: visual
+---
+
+## Introduction
+
+The objective of this assignment is to analyze the performance of a binary classification model and develop intuition for how probability thresholds affect model evaluation metrics.
+
+## Packages and Data Loading
+
+For this assignment, we were given the penguin_predictions.csv dataset from GitHub repository. The dataset contains three columns, `.pred_female`, `.pred_class` and `sex`. `.pred_female` is the model-predicted probability that the observation belongs to the "female" class. `.pred_class` is the predicted class label (1 if `.pred_female`\> 0.5, otherwise 0) and `sex` is the actual class label used during the model training.
+
+```{r}
+#| label: packages
+
+# Loading packages
+pacman::p_load(rio, tidyverse, scales, knitr, kableExtra)
+```
+
+```{r}
+#| label: data-import
+
+# Use the raw version of the GitHub URL
+url <- "https://raw.githubusercontent.com/acatlin/data/refs/heads/master/penguin_predictions.csv"
+
+# Import CSV data directly into a data frame
+penguin <- import(url)
+
+# Inspect the dataset
+glimpse(penguin)
+
+# Recode sex variable
+penguin <- penguin |> 
+  mutate(
+    sex = recode(sex,
+      "female" = "Female",
+      "male" = "Male"
+    )
+  )
+```
+
+## Null Error Rate
+
+The **Null Error Rate** is the rate that predicts the majority class for every single observation in the dataset. It tells you: *"If I don't build a machine learning model at all and just guess the most common outcome every single time, how often will I be wrong?*
+
+```{r}
+#| label: null-error-rate
+
+# look for counts
+  og_penguin <- penguin |> 
+  count(sex) |> 
+  mutate(
+    percent = round((n / sum(n)) * 100, 1))
+```
+
+In the `penguin` dataset, there are 39 female, and 54 male penguins.
+
+Majority class is (`Male`): 54/93 = 58.1%
+
+Minority class is (`Female`): 39/93 = 41.9%
+
+So the **Null Error Rate** is 41.9%
+
+```{r}
+#| label: plot-of-distribution
+
+og_penguin |> 
+ggplot(aes(
+  x = sex,
+  y = n)) +
+  geom_col(fill = "steelblue") +
+  # Add count label just above the bar
+  geom_text(aes(
+    label = n), 
+    vjust = -1.5) +
+  # Add percentage label right below the count label
+  geom_text(aes(
+    label = percent), 
+    vjust = -0.2) +
+    ylim(0, 65) +
+  labs(
+    title = "Actual Class Distribution",
+    x = "Sex",
+    y = "Count"
+  ) +
+  theme_minimal()
+```
+
+Knowing the **Null Error Rate** means that we know how often the current model predicts the wrong outcome. Once we know this, we can evaluate a trained model to see if we can get a more accurate prediction. Our goal will be to show that we can get a rate lower than 41.9%.
+
+## Confusion Matrices at Multiple Thresholds
+
+**True Positives (TP)** are the cases when the actual class of the data point was True and the predicted is also True.
+
+**True Negatives (TN)** are the cases when the actual class of the data point was False and the predicted is also False.
+
+**False Positives (FP)** are the cases when the actual class of the data point was False and the predicted is True. False because the model predicted incorrectly and Positive because the class is correct or positive.
+
+**False Negatives (FN)** are the cases when the actual class of the data point was True and the predicted was False. False because the model predicted incorrectly and Negative because the class is correct, or negative.
+
+```{r}
+#| label: thresholds
+
+threshold <- penguin |> 
+  mutate(
+    pred_02 = case_when(
+    .pred_female > 0.2 ~ "Female",
+    TRUE ~ "Male"
+  ),
+  pred_05 = case_when(
+    .pred_female > 0.5 ~ "Female",
+    TRUE ~ "Male"
+  ),
+  pred_08 = case_when(
+    .pred_female > 0.8 ~ "Female",
+    TRUE ~ "Male"
+  ))
+```
+
+## Probability Threshold of 0.2
+
+```{r}
+#| label: pred-02
+
+threshold_02 <- threshold |> 
+  count(sex, pred_02) |> 
+  select(sex, pred_02, n) |> 
+  pivot_wider(
+    names_from = pred_02,
+    values_from = n,
+    values_fill = 0
+  ) 
+```
+
+```{r}
+#| label: view-pred-02-table
+
+# Make summary table for pred_02
+threshold_02 |> 
+  kbl(
+    caption = "Table 1. Confusion Matrix at 0.2 Treshhold",
+    col.names = c("Actual", "Pred Female", "Pred Male"),
+    align = c("l", "c", "c")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) |> 
+  column_spec(1, bold = TRUE) 
+```
+
+**TP:** 37
+
+**FP:** 2
+
+**TN:** 48
+
+**FN:** 6
+
+**Null Error Rate (37/93):** 39.7%
+
+### Accuracy
+
+Accuracy is the number of correct predictions made by the model over all predictions made.
+
+**Accuracy = (TP + TN) / (TP + FP + FN + TN)**
+
+```{r}
+#| label: accuracy-0.2
+
+acc_02 <-  
+  (37 + 48) / (37 + 2 + 6 + 48)
+
+round((acc_02 * 100), 1)
+```
+
+### Precision
+
+Precision tells us the proportion of positive predictions that were actually correct. It answers: "*When the model predicts positive, how often is it right?"*
+
+**Precision = TP / (TP + FP)**
+
+```{r}
+#| label: precision-0.2
+
+prec_02 <- 
+  37 / (37 + 2)
+
+round((prec_02 * 100), 1)
+```
+
+### Recall
+
+Recall is the proportion of actual positive cases that the model correctly identified. It answers: *"Out of all the real positive cases, how many did the model catch?"*
+
+**Recall = TP / (TP + FN)**
+
+```{r}
+#| label: recall-0.2
+
+rec_02 <- 
+  37 / (37 + 6)
+
+round((rec_02 * 100), 1)
+```
+
+### F1 Score
+
+The harmonic mean of precision and recall. It measures a model's overall predictive accuracy.
+
+**F1 Score = 2 \* (Precision \* Recal) / (Precision + Recall)**
+
+```{r}
+#| label: F1-score-0.2
+
+f1_score_02 <- 
+  2 * ((prec_02 * rec_02) / (prec_02 + rec_02))
+
+f1_score_02
+```
+
+## Probability Threshold of 0.5
+
+```{r}
+#| label: pred-05
+
+threshold_05 <- threshold |> 
+  count(sex, pred_05) |> 
+  select(sex, pred_05, n) |> 
+  pivot_wider(
+    names_from = sex,
+    values_from = n,
+    values_fill = 0
+  )
+```
+
+```{r}
+#| label: view-pred-05-table
+
+# Make summary table for pred_05
+threshold_05 |> 
+kbl(
+  caption = "Table 2. Confusion Matrix at 0.5 Threshhold",
+  col.names = c("Actual", "Pred Female", "Pred Male"),
+  align = c("l", "c", "c")
+) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) |> 
+  column_spec(1, bold = TRUE)
+```
+
+**TP:** 36
+
+**FP:** 3
+
+**TN:** 51
+
+**FN:** 3
+
+**Null Error Rate (36/93):** 38.7%
+
+### Accuracy
+
+**Accuracy = (TP + TN) / (TP + FP + FN + TN)**
+
+```{r}
+#| label: accuracy-0.5
+
+acc_05 <-  
+  (36 + 51) / (36 + 3 + 3 + 51)
+
+round((acc_05 * 100), 1)
+```
+
+### Precision
+
+**Precision = TP / (TP + FP)**
+
+```{r}
+#| label: precision-0.5
+
+prec_05 <- 
+  36 / (36 + 3)
+
+round((prec_05 * 100), 1)
+```
+
+### Recall
+
+**Recall = TP / (TP + FN)**
+
+```{r}
+#| label: recall-0.5
+
+rec_05 <- 
+  36 / (36 + 3)
+
+round((rec_05 * 100), 1)
+```
+
+### F1 Score
+
+**F1 Score = 2 \* (Precision \* Recall) / (Precision + Recall)**
+
+```{r}
+#| label: F1-score-0.5
+
+f1_score_05 <- 
+  2 * ((prec_05 * rec_05) / (prec_05 + rec_05))
+
+f1_score_05
+```
+
+## Probability Threshold of 0.8
+
+```{r}
+#| label: pred-08
+
+threshold_08 <- threshold |> 
+  count(sex, pred_08) |> 
+  select(sex, pred_08, n) |> 
+  pivot_wider(
+    names_from = sex,
+    values_from = n,
+    values_fill = 0
+  )
+```
+
+```{r}
+#| label: view-pred-08-table
+
+threshold_08 |> 
+  kbl(
+    caption = "Table 3. Confusion Matrix at 0.8 Threshhold",
+    col.names = c("Actual", "Pred Female", "Pred Male"),
+    align = c("l", "c", "c")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) |> 
+  column_spec(1, bold = TRUE) 
+```
+
+**TP:** 36
+
+F**P:** 2
+
+**TN:** 52
+
+**FN:** 3
+
+**Null Error Rate (36/93):** 38.7%
+
+### Accuracy
+
+**Accuracy = (TP + TN) / (TP + FP + FN + TN)**
+
+```{r}
+#| label: accuracy-0.8
+
+acc_08 <-  
+  (36 + 52) / (36 + 2 + 3 + 52)
+
+round((acc_08 * 100), 1)
+```
+
+### Precision
+
+**Precision = TP / (TP + FP)**
+
+```{r}
+#| label: precision-0.8
+
+prec_08 <- 
+  36 / (36 + 2)
+
+round((prec_08 * 100), 1)
+```
+
+### Recall
+
+**Recall = TP / (TP + FN)**
+
+```{r}
+#| label: recall-0.8
+
+rec_08 <- 
+  36 / (36 + 3)
+
+round((rec_08 * 100), 1)
+```
+
+### F1 Score
+
+**F1 Score = 2 \* (Precision \* Recall) / (Precision + Recall)**
+
+```{r}
+#| label: F1-score-0.8
+
+f1_score_08 <- 
+  2 * ((prec_08 * rec_08) / (prec_08 + rec_08))
+
+f1_score_08
+```
+
+## Threshold Use Cases
+
+Choosing which threshold to use, 0.2 or 0.8 come down to what type of error someone is more willing to commit, missing a positive case, or raising a false alarm.
+
+### A 0.2 Threshold
+
+Using a lower threshold is used in a scenario where it's more important to catch as many positive cases as possible, even if it means tolerating false alarms. In the cases of a rare or deadly diseases where treatment time is crucial for survival, we may need to lower the threshold to ensure the model flags anyone with the probability of having the disease
+
+### A 0.8 Threshold
+
+Using a higher threshold is used in a scenario where accuracy is more important. In the case of an app that automatically moves emails straight to the trash folder, we might want to be more strict about making sure that the system is not deleting emails that actually important. Using a threshold of 0.8 in this situation would mean that the app will only delete an email if it is 80% sure that it is junk. If it is not sure, then the email would stain in the inbox.

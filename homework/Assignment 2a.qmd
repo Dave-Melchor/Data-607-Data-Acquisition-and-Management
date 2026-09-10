@@ -1,0 +1,198 @@
+---
+title: "Movie Ratings"
+author: "David Melchor"
+format: 
+  html:
+    embed-resources: true
+    toc: true
+editor: visual
+---
+
+## Introduction
+
+The objective of this assignment was to collect simple movie-rating data, store it in a SQL database, and analyze it in R. I created a WhatsApp poll to survey members of my family, asking them to rate the following movies on a 1–5 scale (with 1 being bad and 5 being excellent): *Prince of Egypt*, *Coco*, *Encanto*, *The Lion King*, *Moana*, and *Spider-Man: Into the Spider-Verse*. Participants were instructed to rate only the movies they had seen and to leave any unseen movies unrated. In total, I received 14 responses.
+
+## Loading Packages in R
+
+```{r}
+#| label: packages
+
+# Load PostgreSQL packages
+pacman::p_load(DBI, RPostgres, tidyverse, knitr, kableExtra)
+```
+
+## Connecting to SQL Server
+
+```{r}
+#| label: connect
+
+# Connect to database
+con <- dbConnect(
+  RPostgres::Postgres(),
+  dbname = "postgres",
+  host = "localhost",
+  port = 5432,
+  user = Sys.getenv("USER")
+  )
+
+# Test connection
+dbIsValid(con)
+```
+
+## Creating a Data Table
+
+I made my job a bit harder by using a WhatsApp poll, as I had to manually populate the SQL database rather than simply exporting responses from Google Forms into a .csv file. However, manually building the table in the script ensures the entire document is fully self-contained and reproducible—anyone can run this code and obtain the exact same results.
+
+```{r}
+#| label: create-table
+
+# Drop table to avoid duplicate rows
+dbExecute(con, "
+  DROP TABLE IF EXISTS movie_ratings;
+")
+
+# Create SQL data table "movie ratings"
+dbExecute(con, "
+  CREATE TABLE IF NOT EXISTS movie_ratings (
+    person_id SERIAL PRIMARY KEY,
+    person_name VARCHAR(50),
+    prince_of_egypt NUMERIC(2,1),
+    coco NUMERIC(2,1),
+    encanto NUMERIC(2,1),
+    lion_king NUMERIC(2,1),
+    moana NUMERIC(2,1),
+    into_the_spider_verse NUMERIC(2,1)
+  );
+")
+```
+
+```{r}
+#| label: insert-data
+
+# Insert survey responses to table
+dbExecute(con, "
+  INSERT INTO movie_ratings (
+    person_name,
+    prince_of_egypt,
+    coco,
+    encanto,
+    lion_king,
+    moana,
+    into_the_spider_verse)
+  VALUES
+    ('Alain', 5, 5, 2, 5, 3, 4),
+    ('Liliana', 5, 3, 2, 5, 3, 3),
+    ('Maya', 5, 3, 3, 4, 3, 4),
+    ('Vanesa', 5, 4, 2, 4, 5, 5),
+    ('Heather', 5, 5, 3, 5, 3, 4),
+    ('Elisa', 5, 5, 3, 5, 3, 4),
+    ('Nate', 3, 5, NULL, 4, 4, NULL),
+    ('Jeff', 4, 4, 3, 5, 3, NULL),
+    ('Steve', NULL, 5, NULL, 3, 3, NULL),
+    ('Rachel', 5, 3, NULL, 4, 2, NULL),
+    ('Stewart', 5, 3, NULL, 4, 2, NULL),
+    ('Becca', NULL, 5, 3, 4, 2, NULL),
+    ('Melanie', NULL, 5, 4, 3, 5, NULL),
+    ('Mateo', 5, 4, 3, 4, NULL, 5);
+")
+```
+
+## Lodading the Data Into R
+
+```{r}
+#| label: load-to-R
+
+# Move the data table movie_ratings to R
+ratings <- dbGetQuery(con,
+                "SELECT * FROM movie_ratings;")
+
+# Inspect the data
+glimpse(ratings)
+```
+
+## Manipulating, Reshaping and Cleaning the Data
+
+After inspecting the dataset, I initially struggled to generate summary statistics on the wide-format table. I realized I needed to pivot the data into a long format, creating two new variables: `movie` and `rating`. Reshaping the data allowed me to group by `movie` and compute the required summary metrics.
+
+```{r}
+#| label: pivot-longer
+
+# Pivot data longer to group_by() movies
+ratings <- ratings |> 
+  pivot_longer(
+    cols = -c(person_id, person_name),
+    names_to = "movie",
+    values_to = "rating"
+  )
+```
+
+```{r}
+#| label: re-label-titles
+
+# Re-label titles
+ratings <- ratings |> 
+  mutate(
+    movie = case_when(
+      movie == "prince_of_egypt" ~ "Prince of Egypt",
+      movie == "coco" ~ "Coco",
+      movie == "encanto" ~ "Encanto",
+      movie == "lion_king" ~ "The Lion King",
+      movie == "moana" ~ "Moana",
+      movie == "into_the_spider_verse" ~ "Spider-Man: Into the Spider-Verse",
+      TRUE ~ "movie"
+    )
+  )
+```
+
+```{r}
+#| label: avg-rating
+
+# Create summary table
+movie_summary <- ratings |> 
+  group_by(movie) |> 
+  summarise(
+    times_rated = sum(!is.na(rating)),
+    missing_count = sum(is.na(rating)),
+    mean_rating = round(mean(rating, na.rm = TRUE), 2),
+  ) |> 
+  arrange(desc(mean_rating))
+```
+
+## Formatting for Presentation
+
+Once I had `movie_summary` created, I was able to turn this data frame into a table using the packages `knitr` and `kableExtra`
+
+```{r}
+#| label: view-table
+
+# Make summary table
+movie_summary |> 
+  kbl(
+    caption = "Table 1: Overall Movie Ratings Summary",
+    col.names = c("Movie Title", "Times Rated", "Missing Count", "Mean Rating"),
+    align = c("l", "c", "c", "c")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) |> 
+  column_spec(1, bold = TRUE) %>%
+  column_spec(4, bold = TRUE, color = "#2A6496")
+```
+
+## Conclusion
+
+Although I assumed I had chosen universally popular movies, I was surprised to find several missing values where participants had not seen certain films. A primary challenge in this assignment was creating and populating the SQL table from scratch; while I have basic familiarity with SQL, I had not previously constructed a table and inserted data directly. Performing this step directly in R would have been simpler, but using SQL fulfilled a key assignment requirement. In order to get help with this, I referred to the "Practical SQL A Beginner's Guide to Story Telling with Data" ebook found on this [site](https://www.kea.nu/files/textbooks/humblelearn2code/practicalsql.pdf). Chapter 1 had instructions on how to create a table and insert data manually.
+
+I also noticed that every time I ran the code, the number of times the movies were rated kept increasing in my data table. I didn't realize that every time I rendered or ran the code, I was adding duplicate rows. I learned that I needed to add the `DROP TABLE IF EXISTS movie_ratings;` command right before creating the table so it would reset cleanly and stop that behavior.
+
+Other challenges I faced were understanding the need to pivot the data into a long format so I could group it by movie and run summary statistics to do the analysis. That was the real key to getting the results I needed. It was also a good learning experience to use `knitr` and `kableExtra` to format my table, since using `View(movie_summary)` didn't let the document render as I expected. I found this [video](https://www.youtube.com/watch?v=JqUViTDoSEo) on YouTube that explains how to use the `knitr` and `kableExtra` packages to create the table I did.
+
+## Sources
+
+1.  Creating a Table (CREATE TABLE) Chapter & Page Range: Chapter 1 (Creating Your First Database and Table), pages 5–7.
+
+2.  Inserting Data (INSERT INTO) Chapter & Page Range: Chapter 1 (Creating Your First Database and Table), pages 8–9.
+
+3.  Richard On Data. (2021, January 28). *Designing tables in R with "knitr" and "kableExtra" \| R Tutorial (2021)* \[Video\]. YouTube. <https://www.youtube.com/watch?v=JqUViTDoSEo>
