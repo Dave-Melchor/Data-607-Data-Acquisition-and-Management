@@ -1,0 +1,282 @@
+---
+title: "Movie Ratings"
+author: "David Melchor"
+format: 
+  html:
+    embed-resources: true
+    toc: true
+---
+
+## Introduction
+
+In this assignment, we are building a non-personalized recommendation system using the **Global Baseline Estimate (GBE).** The goal is to fill in the missing ratings for every movie that a survey participant left unrated because they hadn't seen it, allowing us to generate customized recommendations for unseen titles.
+
+The Global Baseline Estimate predicts what rating a specific person would give to a specific movie using the formula:
+
+`Predicted Rating = Global Mean + Movie Bias + User Bias`
+
+1.  Global Mean: The overall average rating across all movies and all participants in our dataset.
+
+2.  Movie Bias: How much better or worse a specific movie is compared to the overall average (Movie Avg - Global Mean).
+
+3.  User Bias: How strict or generous a specific participant is compared to the overall average (User Ave - Global Mean)
+
+## Business Question
+
+**Business Question:** How can we predict ratings for movies our user's haven't seen yet, and which movies should we recommend to our users based on those predicted ratings?
+
+## Strategy and Technical Approach
+
+- Global Mean (mu) = mean(rating)
+
+- Movie Bias (b_i) = movie_avg - mu
+
+- User Bias (b_u) = user_avg - mu
+
+Predicted Rating = mu + b_i + b_u
+
+## Loading Packages
+
+```{r}
+#| label: packages
+
+# Loading packages
+pacman::p_load(DBI, RPostgres, tidyverse, knitr, kableExtra)
+```
+
+## Connecting to SQL Server
+
+```{r}
+#| label: connect
+
+# Safely connect to local PostgreSQL
+if (exists("con") && dbIsValid(con)) {
+  dbDisconnect(con) # Close lingering connection if re-running chunk
+}
+
+con <- dbConnect(
+  RPostgres::Postgres(),
+  dbname = "postgres",
+  host = "localhost",
+  port = 5432,
+  user = "vid"
+)
+
+# Verify the connection works
+dbIsValid(con)
+```
+
+```{r}
+#| label: create-table
+
+# Drop table to avoid duplicate rows
+dbExecute(con, "
+  DROP TABLE IF EXISTS movie_ratings;
+")
+
+# Create SQL data table "movie ratings"
+dbExecute(con, "
+  CREATE TABLE IF NOT EXISTS movie_ratings (
+    person_id SERIAL PRIMARY KEY,
+    critic VARCHAR(50),
+    prince_of_egypt NUMERIC(2,1),
+    coco NUMERIC(2,1),
+    encanto NUMERIC(2,1),
+    lion_king NUMERIC(2,1),
+    moana NUMERIC(2,1),
+    into_the_spider_verse NUMERIC(2,1)
+  );
+")
+```
+
+```{r}
+#| label: insert-data
+
+# Insert survey responses to table
+dbExecute(con, "
+  INSERT INTO movie_ratings (
+    critic,
+    prince_of_egypt,
+    coco,
+    encanto,
+    lion_king,
+    moana,
+    into_the_spider_verse)
+  VALUES
+    ('Alain', 5, 5, 2, 5, 3, 4),
+    ('Liliana', 5, 3, 2, 5, 3, 3),
+    ('Maya', 5, 3, 3, 4, 3, 4),
+    ('Vanesa', 5, 4, 2, 4, 5, 5),
+    ('Heather', 5, 5, 3, 5, 3, 4),
+    ('Elisa', 5, 5, 1, 4, 3, 4),
+    ('Nate', 3, 5, NULL, 4, 4, NULL),
+    ('Jeff', 4, 4, 3, 5, 3, NULL),
+    ('Steve', NULL, 5, NULL, 3, 3, NULL),
+    ('Rachel', 5, 3, NULL, 4, 2, NULL),
+    ('Stewart', 5, 3, NULL, 4, 2, NULL),
+    ('Becca', NULL, 5, 3, 4, 2, NULL),
+    ('Melanie', NULL, 5, 4, 3, 5, NULL),
+    ('Mateo', 5, 4, 3, 4, NULL, 5);
+")
+```
+
+## Lodading the Data Into R
+```{r}
+#| label: load-to-R
+
+# Move the data table movie_ratings to R
+ratings <- dbGetQuery(con,
+                "SELECT * FROM movie_ratings;")
+
+# Inspect the data
+glimpse(ratings)
+```
+
+## Manipulating, Reshaping and Cleaning the Data
+
+After inspecting the dataset, I realized I needed to pivot the data into a long format, creating two new variables: `Movie` and `Rating`. Reshaping the data allows me to group by `Movie` and `Rating` and compute the required summary metrics.
+
+```{r}
+#| label: pivot-longer
+
+# Pivot data longer to group_by() movies
+ratings <- ratings |> 
+  pivot_longer(
+    cols = -c(person_id, critic),
+    names_to = "Movie",
+    values_to = "Rating"
+  )
+```
+
+```{r}
+#| label: re-label-titles
+
+# Re-label titles
+ratings <- ratings |> 
+  rename(
+    "Critic" = critic
+  ) |> 
+  mutate(
+    Movie = case_when(
+      Movie == "prince_of_egypt" ~ "Prince of Egypt",
+      Movie == "coco" ~ "Coco",
+      Movie == "encanto" ~ "Encanto",
+      Movie == "lion_king" ~ "The Lion King",
+      Movie == "moana" ~ "Moana",
+      Movie == "into_the_spider_verse" ~ "Spider-Man: Into the Spider-Verse",
+      TRUE ~ Movie
+    )
+  )
+```
+
+## Computing the Global Baseline Components
+```{r}
+#| label: components
+
+# Calculating (mu)
+mu = mean(ratings$Rating, na.rm = TRUE)
+
+# Calculating (b_i)
+movie_bias <- ratings |> 
+  filter(!is.na(Rating)) |> 
+  group_by(Movie) |> 
+  summarise(
+    movie_avg = mean(Rating, na.rm = TRUE),
+    b_i = movie_avg - mu
+  )
+
+# Calculating (b_u)
+user_bias <- ratings |> 
+  filter(!is.na(Rating)) |> 
+  group_by(Critic) |> 
+  summarise(
+    user_avg = mean(Rating, na.rm = TRUE),
+    b_u = user_avg - mu
+  )
+```
+
+## Calculating Predictions
+```{r}
+#| label: predictions
+
+# Join tables to calculate GBE
+predictions <- ratings |> 
+  left_join(movie_bias, by = "Movie") |> 
+  left_join(user_bias, by = "Critic") |> 
+  mutate(
+    # Calculate Predicted Ratings
+    `Predicted Rating` = mu + b_u + b_i,
+    # Fill in missing values
+    `Final Rating` = (coalesce(Rating, `Predicted Rating`))
+  )
+```
+
+## Final Table Preparation
+```{r} 
+#| label: pivot-wider
+
+# Pivot wider and clean names automatically
+rating_comparison <- predictions |> 
+  select(Critic, Movie, Rating, `Final Rating`) |> 
+  pivot_wider(
+    names_from = Movie,
+    values_from = c(Rating, `Final Rating`),
+    names_glue = "{Movie}_{.value}"
+  )
+
+# Extract unique movie names in exact order
+movie_names <- unique(predictions$Movie)
+
+# Interleave Original & Final columns dynamically by movie name
+ordered_cols <- c("Critic", as.vector(sapply(movie_names, function(m) {
+  c(paste0(m, "_Rating"), paste0(m, "_Final Rating"))
+})))
+
+# Apply column order
+rating_comparison <- rating_comparison |> 
+  select(all_of(ordered_cols))
+```
+
+## Final Table
+```{r}
+#| label: display-table
+
+#| label: display-table
+
+rating_comparison |> 
+  kable(
+    digits = 1,
+    caption = "Comparison of Original vs. Final Ratings",
+    col.names = c("Critic", rep(c("Rating", "Final"), length(movie_names)))
+  ) |> 
+  add_header_above(c(
+    " " = 1,
+    "Prince of Egypt" = 2,
+    "Coco" = 2,
+    "Encanto" = 2,
+    "The Lion King" = 2,
+    "Moana" = 2,
+    "Spider-Man: Into the Spider-Verse" = 2
+  )) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE
+  ) |> 
+  column_spec(seq(3, 13, by = 2), color = "#2b5c8f", bold = TRUE)
+```
+
+## Conclusion
+In this project, we built a non-personalized recommendation system using the Global Baseline Estimate (GBE) model to fill in missing movie ratings. By combining the overall survey average with individual movie popularity and user rating habits, we were able to predict ratings for unseen titles and complete our full dataset.
+
+## Rating Scale vs. Model Predictions
+When taking the survey, participants rated movies using simple whole numbers from 1 to 5. The model, however, outputs continuous decimal numbers like 4.3 or 2.8. Having these decimal values is useful because it gives us more precision—it breaks ties between movies and helps us rank unseen titles more accurately. At the same time, it’s important to remember that since real people think in whole numbers, these decimal scores are best used to rank preferences rather than represent an exact score someone would consciously give.
+
+```{r}
+#| label: disconnect
+
+# Cleanly close the database connection
+dbDisconnect(con)
+```
+
+
+
