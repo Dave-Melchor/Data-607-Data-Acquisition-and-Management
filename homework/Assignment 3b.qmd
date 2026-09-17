@@ -1,0 +1,194 @@
+---
+title: "Window Functions"
+author: "David Melchor"
+format: 
+  html:
+    embed-resources: true
+    toc: true
+---
+
+## Introduction
+We were asked to find a dataset that contained time series data for two or more separate items. I found the Individual Household Electric Power Consumption dataset for this assignment at the UCI Machine Learning Repository website from this link [UCI Machine Learning Data Repository](https://archive.ics.uci.edu/dataset/235/individual+household+electric+power+consumption). Using the `ucimlrepo` R package I was able to import the data directly into this script, so there is no need to import data from any document. Technical setup and package usage guidelines follow the documentation outlined on the [ucimlrepo R Package Site](https://r-pkg.thecoatlessprofessor.com/ucimlrepo/)
+
+## Business & Data Science Question
+
+- **Business Question:** "Which sub-metered areas of the house (kitchen, laundry room, or climate control) consume the most energy over time, and how do their daily and year-to-date usage trends compare?"
+
+## Strategy & Technical Approach
+
+1.  **Data Import:** I will use the `ucimlrepo` package to import the dataset direclty into R.
+2.  **Data Cleaning & Wrangling:**
+    - Check data types
+    - Look for missing values
+    - Clean column headers
+    - Recode variables as needed
+    - Select a subset of data needed for analysis
+3.  **Exploratory Visualizations:** Use `ggplot2` to visualize relationships and identify patient risks.
+
+## Anticipated Data Challenges
+
+- **Missing Data Handling:** The dataset may contain missing values records that may require filtering.
+- **Recoding Values:** I'm going to take a while guess and say that I'm going to have to recode some value to something that makes more sense.  
+
+## Installing and Loading Packages
+```{r}
+#| label: packages
+#| 
+# Install ucimlrepo and load the packages
+pacman::p_load(ucimlrepo, tidyverse, slider, scales)
+```
+
+## Loading the Data
+```{r}
+#| label: data-import
+
+# Fetch the dataset from the UCI data repository
+uci_data <- fetch_ucirepo(name = "Individual Household Electric Power Consumption")
+
+# Extract the original dataset
+power_data <- uci_data$data$features
+```
+
+## Data Exploration
+```{r}
+#| label: data-exploration
+
+# Check out the data dictionary
+data_dictionary <- uci_data$variables
+
+# Check the data structure
+glimpse(power_data)
+```
+
+## Data Cleaning and Processing
+
+The variables Date, Time, and Sub_metering_1-3 are `<chr>` type variables so R will not be able to recognize calendar dates, time, or numbers.
+```{r}
+#| label: cleaning
+
+# Transform data types
+power_data <- power_data |> 
+  mutate(
+    Date = dmy(Date),
+    Kitchen = as.numeric(Sub_metering_1),
+    Laundry = as.numeric(Sub_metering_2),
+    Climate = as.numeric(Sub_metering_3)
+  )
+```
+
+```{r}
+#| label: pivot-longer
+
+power_data <- power_data |> 
+  pivot_longer(
+    cols = c(Kitchen, Laundry, Climate),
+    names_to = "Sub_Meter",
+    values_to = "Energy_Wh"
+  )
+```
+
+```{r}
+#| label: summarise
+
+# Add up the Wh by day
+power_summary <- power_data |> 
+  group_by(Date, Sub_Meter) |> 
+  summarise(
+    Daily_Energy = sum(Energy_Wh, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+## Applying Window Functions
+```{r}
+#| label: year
+
+# Create a new variable year
+power_summary <- power_summary |> 
+  mutate(
+    Year = year(Date)) |> 
+# Year to date metric
+  group_by(Sub_Meter, Year) |> 
+  mutate(
+    YTD_Avg = cummean(Daily_Energy)) |> 
+# 6 day moving average
+  group_by(Sub_Meter) |> 
+  mutate(
+    Moving_Avg_6D = slide_dbl(Daily_Energy, mean, .before = 5, .complete = TRUE)) |> 
+  ungroup()
+```
+
+## Visualizing Time Series for 6-Day Moving Average
+```{r}
+#| label: 6d-plot
+
+power_summary |> 
+  ggplot(aes(
+    x = Date,
+    y = Moving_Avg_6D,
+    colour = Sub_Meter)) +
+  geom_line(
+    linewidth = 0.8,
+    alpha = 0.85) +
+  scale_y_continuous(
+    labels = comma) +
+  scale_color_manual(values = c(
+    "Climate" = "#009E73", 
+    "Kitchen" = "#E69F00", 
+    "Laundry" = "#0072B2")) +
+ labs(
+    title = "Household Energy Consumption Trends (2006–2010)",
+    subtitle = "6-day moving average of daily energy consumption per sub-meter",
+    x = "Date",
+    y = "6-Day Moving Average (Watt-Hours)",
+    color = "Sub-meter Category",
+    caption = "Data Source: UCI Machine Learning Repository") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "grey30", margin = margin(b = 10)),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Visualizing Time Series for Year-To-Date
+```{r}
+#| label: ytd-plot
+
+power_summary |> 
+  ggplot(aes(
+    x = Date,
+    y = YTD_Avg,
+    colour = Sub_Meter)) +
+  geom_line(
+    linewidth = 0.8,
+    alpha = 0.85) +
+  scale_y_continuous(
+    labels = comma) +
+  scale_color_manual(values = c(
+    "Climate" = "#009E73", 
+    "Kitchen" = "#E69F00", 
+    "Laundry" = "#0072B2")) +
+ labs(
+    title = "Household Energy Consumption Trends (2006–2010)",
+    subtitle = "YTD cummulative average of energy consumption per sub-meter",
+    x = "Date",
+    y = "YTD Cummulative Average (Watt-Hours)",
+    color = "Sub-meter Category",
+    caption = "Data Source: UCI Machine Learning Repository") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(color = "grey30", margin = margin(b = 10)),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Conclusion
+
+Looking at the two visualizations side-by-side highlights how different metrics frame household energy patterns over time. The 6-day moving average chart clearly captures seasonality, driven almost entirely by the dramatic ups and downs of the climate sub-meter as heating and cooling demands shift throughout the year.
+
+In contrast, the YTD cumulative average chart offers a look at annual baseline performance. The hard reset every January 1st causes noticeable volatility early in the year, where a small number of days in the average leads to sharp initial spikes. As more days are added to the calculation, the metric stabilizes, offering a reliable picture of cumulative energy consumption across each sub-meter as the year progresses.
+
