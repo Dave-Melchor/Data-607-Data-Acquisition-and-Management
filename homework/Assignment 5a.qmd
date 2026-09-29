@@ -1,0 +1,93 @@
+---
+title: "Flight Delay"
+author: "David Melchor"
+format:
+  html:
+    embed-resources: true
+    toc: true
+---
+
+## Introduction
+We were asked to analyze flight data across two carriers, Alaska and AM West Airlines. Nobody likes flight delays, it impacts customer satisfaction and causes operational inefficiency. This analysis will evaluate the arrival times for these two airlines and measure their delay arrival.
+
+## Business Question
+Which airline has better on-time performance? Specifically, we want to know if one carrier is more reliable than the other across different locations.
+
+## Strategy
+1. Data Ingestion
+We are going to recreate the raw untidy table in R from the instructions we were given.
+2. Data Tidying
+Since we know the data in not in tidy format, we are going to pivot the data from a wide format (where city names are column headers) to a long format using `tidyr::pivot_longer()`, to make eash row represent a single `Airline`, `Status`, `City`, `Flight_Count`
+
+## Load packages
+```{r packages}
+
+# Load packages
+pacman::p_load(tidyverse)
+```
+
+## Data creation and cleaning
+```{r create-data-frame}
+
+# Build data frame
+flight_raw <- tibble(
+  Airline = c("Alaska", NA, "AM West", NA),
+  Status = c("On time", "Delayed", "On time", "Delayed"),
+  `Los Angeles` = c(497, 62, 694, 117),
+  Phoenix = c( 221, 12, 4840, 415),
+  `San Diego` = c(212, 20, 383, 65),
+  `San Francisco` = c(503, 102, 320, 129),
+  Seattle = c(1841, 305, 201, 61))
+```
+
+```{r fill-missing}
+
+# Fill-in missing values
+flight_raw <- flight_raw |> 
+  fill(Airline)
+```
+
+```{r pivot-long}
+
+# Pivot the data long
+flights <- flight_raw |> 
+  pivot_longer(
+    cols = c(`Los Angeles`, Phoenix, `San Diego`, `San Francisco`, Seattle),
+    names_to = "City",
+    values_to = "Flight_Count"
+  )
+```
+
+## Airline comparison
+```{r overall-percent}
+
+# Find overall percent difference between airlines
+airline_summary <- flights |> 
+  group_by(Airline) |> 
+  summarise(
+    `Total Flights` = sum(Flight_Count),
+    `Total Delayed` = sum(Flight_Count[Status == "Delayed"]),
+    `Delay Percent` = round((`Total Delayed` / `Total Flights`), 3) * 100
+  )
+```
+
+Overall, **AM West** has a lower delay rate of **10.9%** when compared to **Alaska** **13.3%**.
+
+## City by city comparison
+```{r city-by-city}
+#| message: false
+
+# Find city by city percent difference 
+city_summary <- flights |> 
+  group_by(Airline, City) |> 
+  summarise(
+    `Total Flights` = sum(Flight_Count),
+    `Total Delayed` = sum(Flight_Count[Status == "Delayed"]),
+    `Delayed Percent` = round((`Total Delayed` / `Total Flights`), 3) * 100) |> 
+  arrange(City)
+```
+
+City by city, **AM West Airlines has higher percent delays in every city** when compared to Alaska.
+
+## Conclusion
+When comparing the airlines city by city, Alaska Airlines actually outperforms AM West in every single location, maintaining a lower percentage of delayed flights across the board. However, because AM West operates a massive volume of its flights in Phoenix (5,255 out of 7,225 total flights)—where delays are naturally low—those favorable numbers pull down their overall delay average. Conversely, the majority of Alaska's flights originate in Seattle (2,146 out of 3,775 total flights), a location with higher overall delay rates. AM West appears superior at an aggregate level because of its heavy flight presence in a low-delay city.
