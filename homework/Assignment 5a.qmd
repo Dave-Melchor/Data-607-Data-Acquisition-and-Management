@@ -23,21 +23,17 @@ Since we know the data in not in tidy format, we are going to pivot the data fro
 ```{r packages}
 
 # Load packages
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, rio)
 ```
 
-## Data creation and cleaning
-```{r create-data-frame}
+## Data acquisition and cleaning
+```{r get-data}
 
-# Build data frame
-flight_raw <- tibble(
-  Airline = c("Alaska", NA, "AM West", NA),
-  Status = c("On time", "Delayed", "On time", "Delayed"),
-  `Los Angeles` = c(497, 62, 694, 117),
-  Phoenix = c( 221, 12, 4840, 415),
-  `San Diego` = c(212, 20, 383, 65),
-  `San Francisco` = c(503, 102, 320, 129),
-  Seattle = c(1841, 305, 201, 61))
+# Data Source
+url <- "https://raw.githubusercontent.com/Dave-Melchor/Data-607-Data-Acquisition-and-Management/refs/heads/main/data/raw/airline_delays.csv"
+
+# Bring in data
+flight_raw <- import(url)
 ```
 
 ```{r fill-missing}

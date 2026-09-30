@@ -2212,7 +2212,7 @@ vertical-align: -.125em;
   <li><a href="#business-question" id="toc-business-question" class="nav-link" data-scroll-target="#business-question">Business Question</a></li>
   <li><a href="#strategy" id="toc-strategy" class="nav-link" data-scroll-target="#strategy">Strategy</a></li>
   <li><a href="#load-packages" id="toc-load-packages" class="nav-link" data-scroll-target="#load-packages">Load packages</a></li>
-  <li><a href="#data-creation-and-cleaning" id="toc-data-creation-and-cleaning" class="nav-link" data-scroll-target="#data-creation-and-cleaning">Data creation and cleaning</a></li>
+  <li><a href="#data-acquisition-and-cleaning" id="toc-data-acquisition-and-cleaning" class="nav-link" data-scroll-target="#data-acquisition-and-cleaning">Data acquisition and cleaning</a></li>
   <li><a href="#airline-comparison" id="toc-airline-comparison" class="nav-link" data-scroll-target="#airline-comparison">Airline comparison</a></li>
   <li><a href="#city-by-city-comparison" id="toc-city-by-city-comparison" class="nav-link" data-scroll-target="#city-by-city-comparison">City by city comparison</a></li>
   <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
@@ -2265,21 +2265,17 @@ vertical-align: -.125em;
 <h2 class="anchored" data-anchor-id="load-packages">Load packages</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load packages</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(tidyverse)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(tidyverse, rio)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="data-creation-and-cleaning" class="level2">
-<h2 class="anchored" data-anchor-id="data-creation-and-cleaning">Data creation and cleaning</h2>
+<section id="data-acquisition-and-cleaning" class="level2">
+<h2 class="anchored" data-anchor-id="data-acquisition-and-cleaning">Data acquisition and cleaning</h2>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build data frame</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>flight_raw <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Airline =</span> <span class="fu">c</span>(<span class="st">&quot;Alaska&quot;</span>, <span class="cn">NA</span>, <span class="st">&quot;AM West&quot;</span>, <span class="cn">NA</span>),</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">Status =</span> <span class="fu">c</span>(<span class="st">&quot;On time&quot;</span>, <span class="st">&quot;Delayed&quot;</span>, <span class="st">&quot;On time&quot;</span>, <span class="st">&quot;Delayed&quot;</span>),</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">Los Angeles</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">497</span>, <span class="dv">62</span>, <span class="dv">694</span>, <span class="dv">117</span>),</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">Phoenix =</span> <span class="fu">c</span>( <span class="dv">221</span>, <span class="dv">12</span>, <span class="dv">4840</span>, <span class="dv">415</span>),</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">San Diego</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">212</span>, <span class="dv">20</span>, <span class="dv">383</span>, <span class="dv">65</span>),</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">`</span><span class="at">San Francisco</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">503</span>, <span class="dv">102</span>, <span class="dv">320</span>, <span class="dv">129</span>),</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">Seattle =</span> <span class="fu">c</span>(<span class="dv">1841</span>, <span class="dv">305</span>, <span class="dv">201</span>, <span class="dv">61</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Data Source</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>url <span class="ot">&lt;-</span> <span class="st">&quot;https://raw.githubusercontent.com/Dave-Melchor/Data-607-Data-Acquisition-and-Management/refs/heads/main/data/raw/airline_delays.csv&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Bring in data</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>flight_raw <span class="ot">&lt;-</span> <span class="fu">import</span>(url)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fill-in missing values</span></span>
