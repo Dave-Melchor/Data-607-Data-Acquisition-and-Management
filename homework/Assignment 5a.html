@@ -2265,7 +2265,7 @@ vertical-align: -.125em;
 <h2 class="anchored" data-anchor-id="load-packages">Load packages</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load packages</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(tidyverse, rio)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(tidyverse)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="data-acquisition-and-cleaning" class="level2">
@@ -2275,48 +2275,85 @@ vertical-align: -.125em;
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>url <span class="ot">&lt;-</span> <span class="st">&quot;https://raw.githubusercontent.com/Dave-Melchor/Data-607-Data-Acquisition-and-Management/refs/heads/main/data/raw/airline_delays.csv&quot;</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Bring in data</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>flight_raw <span class="ot">&lt;-</span> <span class="fu">import</span>(url)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>flight_raw <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(url)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 4 Columns: 7
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: &quot;,&quot;
+chr (2): Airline, Status
+dbl (5): Los Angeles, Phoenix, San Diego, San Francisco, Seattle
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
 </div>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fill-in missing values</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>flight_raw <span class="ot">&lt;-</span> flight_raw <span class="sc">|&gt;</span> </span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fill</span>(Airline)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fill-in missing values</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>flight_raw <span class="ot">&lt;-</span> flight_raw <span class="sc">|&gt;</span> </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">fill</span>(Airline)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pivot the data long</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>flights <span class="ot">&lt;-</span> flight_raw <span class="sc">|&gt;</span> </span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">cols =</span> <span class="fu">c</span>(<span class="st">`</span><span class="at">Los Angeles</span><span class="st">`</span>, Phoenix, <span class="st">`</span><span class="at">San Diego</span><span class="st">`</span>, <span class="st">`</span><span class="at">San Francisco</span><span class="st">`</span>, Seattle),</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_to =</span> <span class="st">&quot;City&quot;</span>,</span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">values_to =</span> <span class="st">&quot;Flight_Count&quot;</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pivot the data long</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>flights <span class="ot">&lt;-</span> flight_raw <span class="sc">|&gt;</span> </span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">cols =</span> <span class="fu">c</span>(<span class="st">`</span><span class="at">Los Angeles</span><span class="st">`</span>, Phoenix, <span class="st">`</span><span class="at">San Diego</span><span class="st">`</span>, <span class="st">`</span><span class="at">San Francisco</span><span class="st">`</span>, Seattle),</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_to =</span> <span class="st">&quot;City&quot;</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">values_to =</span> <span class="st">&quot;Flight_Count&quot;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
 <section id="airline-comparison" class="level2">
 <h2 class="anchored" data-anchor-id="airline-comparison">Airline comparison</h2>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Find overall percent difference between airlines</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>airline_summary <span class="ot">&lt;-</span> flights <span class="sc">|&gt;</span> </span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Airline) <span class="sc">|&gt;</span> </span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Flights</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Flight_Count),</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Delayed</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Flight_Count[Status <span class="sc">==</span> <span class="st">&quot;Delayed&quot;</span>]),</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Delay Percent</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">round</span>((<span class="st">`</span><span class="at">Total Delayed</span><span class="st">`</span> <span class="sc">/</span> <span class="st">`</span><span class="at">Total Flights</span><span class="st">`</span>), <span class="dv">3</span>) <span class="sc">*</span> <span class="dv">100</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Find overall percent difference between airlines</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>airline_summary <span class="ot">&lt;-</span> flights <span class="sc">|&gt;</span> </span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Airline) <span class="sc">|&gt;</span> </span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Flights</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Flight_Count),</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Delayed</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Flight_Count[Status <span class="sc">==</span> <span class="st">&quot;Delayed&quot;</span>]),</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Delay Percent</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">round</span>((<span class="st">`</span><span class="at">Total Delayed</span><span class="st">`</span> <span class="sc">/</span> <span class="st">`</span><span class="at">Total Flights</span><span class="st">`</span>), <span class="dv">3</span>) <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>airline_summary</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 4
+  Airline `Total Flights` `Total Delayed` `Delay Percent`
+  &lt;chr&gt;             &lt;dbl&gt;           &lt;dbl&gt;           &lt;dbl&gt;
+1 ALASKA             3775             501            13.3
+2 AM WEST            7222             787            10.9</code></pre>
+</div>
 </div>
 <p>Overall, <strong>AM West</strong> has a lower delay rate of <strong>10.9%</strong> when compared to <strong>Alaska</strong> <strong>13.3%</strong>.</p>
 </section>
 <section id="city-by-city-comparison" class="level2">
 <h2 class="anchored" data-anchor-id="city-by-city-comparison">City by city comparison</h2>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Find city by city percent difference </span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>city_summary <span class="ot">&lt;-</span> flights <span class="sc">|&gt;</span> </span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Airline, City) <span class="sc">|&gt;</span> </span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Flights</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Flight_Count),</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Delayed</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Flight_Count[Status <span class="sc">==</span> <span class="st">&quot;Delayed&quot;</span>]),</span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Delayed Percent</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">round</span>((<span class="st">`</span><span class="at">Total Delayed</span><span class="st">`</span> <span class="sc">/</span> <span class="st">`</span><span class="at">Total Flights</span><span class="st">`</span>), <span class="dv">3</span>) <span class="sc">*</span> <span class="dv">100</span>) <span class="sc">|&gt;</span> </span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(City)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Find city by city percent difference </span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>city_summary <span class="ot">&lt;-</span> flights <span class="sc">|&gt;</span> </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Airline, City) <span class="sc">|&gt;</span> </span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Flights</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Flight_Count),</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Total Delayed</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">sum</span>(Flight_Count[Status <span class="sc">==</span> <span class="st">&quot;Delayed&quot;</span>]),</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Delayed Percent</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">round</span>((<span class="st">`</span><span class="at">Total Delayed</span><span class="st">`</span> <span class="sc">/</span> <span class="st">`</span><span class="at">Total Flights</span><span class="st">`</span>), <span class="dv">3</span>) <span class="sc">*</span> <span class="dv">100</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(City)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>city_summary</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 5
+# Groups:   Airline [2]
+   Airline City          `Total Flights` `Total Delayed` `Delayed Percent`
+   &lt;chr&gt;   &lt;chr&gt;                   &lt;dbl&gt;           &lt;dbl&gt;             &lt;dbl&gt;
+ 1 ALASKA  Los Angeles               559              62              11.1
+ 2 AM WEST Los Angeles               808             117              14.5
+ 3 ALASKA  Phoenix                   233              12               5.2
+ 4 AM WEST Phoenix                  5255             415               7.9
+ 5 ALASKA  San Diego                 232              20               8.6
+ 6 AM WEST San Diego                 448              65              14.5
+ 7 ALASKA  San Francisco             605             102              16.9
+ 8 AM WEST San Francisco             449             129              28.7
+ 9 ALASKA  Seattle                  2146             305              14.2
+10 AM WEST Seattle                   262              61              23.3</code></pre>
+</div>
 </div>
 <p>City by city, <strong>AM West Airlines has higher percent delays in every city</strong> when compared to Alaska.</p>
 </section>

@@ -23,7 +23,7 @@ Since we know the data in not in tidy format, we are going to pivot the data fro
 ```{r packages}
 
 # Load packages
-pacman::p_load(tidyverse, rio)
+pacman::p_load(tidyverse)
 ```
 
 ## Data acquisition and cleaning
@@ -33,7 +33,7 @@ pacman::p_load(tidyverse, rio)
 url <- "https://raw.githubusercontent.com/Dave-Melchor/Data-607-Data-Acquisition-and-Management/refs/heads/main/data/raw/airline_delays.csv"
 
 # Bring in data
-flight_raw <- import(url)
+flight_raw <- read_csv(url)
 ```
 
 ```{r fill-missing}
@@ -65,6 +65,8 @@ airline_summary <- flights |>
     `Total Delayed` = sum(Flight_Count[Status == "Delayed"]),
     `Delay Percent` = round((`Total Delayed` / `Total Flights`), 3) * 100
   )
+
+airline_summary
 ```
 
 Overall, **AM West** has a lower delay rate of **10.9%** when compared to **Alaska** **13.3%**.
@@ -81,6 +83,8 @@ city_summary <- flights |>
     `Total Delayed` = sum(Flight_Count[Status == "Delayed"]),
     `Delayed Percent` = round((`Total Delayed` / `Total Flights`), 3) * 100) |> 
   arrange(City)
+
+city_summary
 ```
 
 City by city, **AM West Airlines has higher percent delays in every city** when compared to Alaska.
