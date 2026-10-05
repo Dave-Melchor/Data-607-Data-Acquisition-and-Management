@@ -1,0 +1,379 @@
+---
+title: "Project 2 — Data Tidying and Transformation"
+author: "David Melchor"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: show
+    theme: flatly
+execute:
+  echo: true
+  warning: false
+---
+
+## INTRODUCTION
+
+The purpose of Project 2 is to practice and refine skills in transforming wide-format datasets into tidy long formats suitable for analysis. For my first dataset, I selected the Air Quality dataset from the UCI Machine Learning Repository. The dataset can be accessed directly from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/360/air+quality) and the data can be extracted using the `ucimlrepo` R package. I was able to do this by following the technical setup outlined on the [ucimlrepo R Package Site](#0). For my other two datasets, I selected wide-format data posted by my classmates in Discussion 5A: a child sleep schedule posted by [Noelle](#0) Messaoudi and annual health center visit metrics posted by [Renee](#0) Watson.
+
+```{r}
+#| label: packages
+#| include: false
+
+# Install ucimlrepo and load the packages
+pacman::p_load(ucimlrepo, tidyverse, rio, janitor, gt, knitr)
+```
+
+## Loading the Data
+
+I'm choosing to load all the data in one step, then calling each dataset at the beginning of each section to work on each separately.
+
+```{r}
+#| label: data-import
+
+# Fetch the dataset from the UCI data repository
+uci_data <- fetch_ucirepo(name = "Air Quality")
+
+# Extract the original dataset
+air_data <- uci_data$data$original
+
+# url for sleep schedule dataset
+url1 <- "https://raw.githubusercontent.com/Dave-Melchor/Data-607-Data-Acquisition-and-Management/refs/heads/main/data/raw/sleep_schedule.csv"
+
+# url for health center visits dataset
+url2 <- "https://raw.githubusercontent.com/Dave-Melchor/Data-607-Data-Acquisition-and-Management/refs/heads/main/data/raw/annual_health_center_visits.csv"
+
+# Import sleep schedule dataset
+schedule <- import(url1)
+
+# Import health center visits dataset
+visits <- import(url2)
+```
+
+## DATA TIDYING
+
+Once the data has been imported, we are asked to demonstrate the following transformations explicitly:
+
+- Reshape from wide to tidy (long) format
+
+- Normalize variable structure
+
+- Rename variables to follow a consistent naming convention
+
+- Address missing or inconsistent values with documented handling decisions
+
+I will work with one data set at a time, completing all steps from start to finish and repeating the process for each data set until all three have gone through the transformation process.
+
+# Air Quality Data
+
+```{r explore-data}
+
+# look at dataset
+str(air_data)
+
+# rename variables according to data dictionary
+air_data <- air_data |> 
+  rename(
+    date = Date,
+    time = Time,
+    co_true = `CO(GT)`,
+    sensor_tin_oxide = `PT08.S1(CO)`,
+    nmhc_true = `NMHC(GT)`,
+    benzene_true = `C6H6(GT)`,
+    sensor_titania = `PT08.S2(NMHC)`,
+    nox_true = `NOx(GT)`,
+    sensor_tungsten_nox = `PT08.S3(NOx)`,
+    no2_true = `NO2(GT)`,
+    sensor_tungsten_no2 = `PT08.S4(NO2)`,
+    sensor_indium_oxide = `PT08.S5(O3)`,
+    temperature_c = T,
+    relative_humidity = RH,
+    absolute_humidity = AH
+  )
+
+# missing values are tagged with -200, change -200 to NA
+air_data <- air_data |> 
+  mutate(across(where(is.numeric), ~ na_if(.x, -200)))
+
+# let's pivot this data to a long format
+air_data <- air_data |> 
+  pivot_longer(
+    cols = -c(date, time),
+    names_to = "measurement_type",
+    values_to = "values"
+  )
+```
+
+## ANALYSIS
+
+Now that the data has been transformed, we are asked to include the following outputs as appropriate for each analysis:
+
+- Summary tables with clearly labeled columns and units
+
+- Visualizations with axis labels, titles, and legends
+
+- A brief narrative interpreting each result in context
+
+For the air quality data, I want to know how temperature affects different air pollutants.
+
+```{r data-prep}
+
+# isolate temperature with date and time
+temp_data <- air_data |> 
+  filter(measurement_type == "temperature_c") |> 
+  select(date, time, temperature_c = values)
+
+# isolate pollutants
+pollutants <- air_data |> 
+  filter(measurement_type %in% c("co_true", "benzene_true", "nox_true", "no2_true", "nmhc_true")) |> 
+  rename(
+    pollutant_type = "measurement_type"
+  )
+
+# join temperature and pollutants together
+pollutant_temp_analysis <- pollutants |> 
+  inner_join(temp_data, by = c("date", "time"))
+```
+
+```{r plot}
+p_pollutant_tempt <- pollutant_temp_analysis |> 
+  ggplot(aes(
+    x = temperature_c,
+    y = values,
+    color = pollutant_type)) +
+  geom_point(
+    alpha = 0.2) +
+  geom_smooth(
+    method = "lm",
+    colour = "black",
+    se = FALSE) +
+  facet_wrap(
+    ~ pollutant_type,
+    scales = "free_y") +
+  labs(
+    title = "Air Quality Analysis Based on Outside Temperature",
+    subtitle = "Pollutant behavior according to temperature changes",
+    x = "Temperature (°C)",
+    y = "Concentration Value",
+    color = "Pollutant",
+    caption = "Source: UCI Air Quality Dataset") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold")
+  )
+
+# show graph
+p_pollutant_tempt
+```
+
+## Discussion
+
+An analysis of pollutant concentrations relative to ambient temperature reveals distinct patterns across chemical species:
+
+- **Non-Methane Hydrocarbons (NMHC):** Exhibited a steep positive relationship with temperature, indicating that concentrations rise sharply as ambient temperatures increase. However, measurements for NMHC are constrained to a truncated temperature range between roughly 10°C and 30°C, after which data points are absent.
+
+- **Benzene & Carbon Monoxide (CO):** Benzene displays a slight positive trend as temperature increases. Carbon monoxide (`co_true`), on the other hand, shows an almost entirely flat regression line, suggesting its ambient concentrations remain largely independent of temperature variations.
+
+- **Nitrogen Dioxide (**NO2​) & Nitrogen Oxides (NOx​): Both nitrogen species display negative sloped trendlines, demonstrating that concentrations for NO2​ and NOx​ tend to decrease as ambient temperature rises.
+
+# Baby Schedule
+
+Next, I am going to follow the same format as I did for the air quality dataset and work with the baby schedule data provided by my classmate.
+
+```{r schedule-dataset}
+
+str(schedule)
+```
+
+This dataset provides data for how many minutes the baby napped and what time the baby went to sleep for the night The days provided are Monday, Tuesday and Wednesday for a period of two consecutive weeks.
+
+## Data cleaning
+
+```{r schedule-data-clean}
+
+# clean variable names
+schedule_clean <- schedule |> 
+  janitor::clean_names()
+
+# rename columns
+schedule_clean <- schedule_clean |> 
+  rename(
+    week = "f0_fs24_cf0_week",
+    monday_nap_time = "monday_nap_min",
+    monday_bedtime = "mon_bedtime",
+    tuesday_nap_time = "tuesday_nap_min",
+    tuesday_bedtime = "tuesday_bedtime" ,
+    wednesday_nap_time = "wednesday_nap_min",
+    wednesday_bedtime = "wednesday_bedtime"
+  )
+
+# clean observations
+schedule_clean <- schedule_clean |> 
+  mutate(wednesday_bedtime = str_remove_all(wednesday_bedtime, "[\\\\}]"))
+```
+
+## Pivot data
+
+```{r pivot-long}
+
+# pivot data
+schedule_tidy <- schedule_clean |> 
+pivot_longer(
+  cols = -week,
+  names_to = c("day_of_week", ".value"),
+  names_pattern = "(.*)_(nap_time|bedtime)")
+```
+
+## Analysis
+
+```{r plot-schedule}
+
+# Standardize day labels for ordered plotting
+schedule_tidy <- schedule_tidy |> 
+  mutate(day_of_week = factor(stringr::str_to_title(day_of_week), 
+                              levels = c("Monday", "Tuesday", "Wednesday")))
+
+p_schedule_tidy <- schedule_tidy |>  
+ggplot(aes(
+  x = day_of_week, 
+  y = nap_time, 
+  fill = as.factor(week))) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Baby Nap Duration Across Weekdays",
+    subtitle = "Comparing nap lengths (minutes) between Week 1 and Week 2",
+    x = "Day of Week",
+    y = "Nap Duration (minutes)",
+    fill = "Week",
+    caption = "Source: Baby Sleep Schedule Dataset"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"))
+
+# display plot
+p_schedule_tidy
+```
+
+```{r summary}
+
+# summarise data
+sleep_summary <- schedule_tidy |> 
+  group_by(day_of_week) |> 
+  summarise(
+    avg_nap_min = mean(nap_time, na.rm = TRUE),
+    total_nap_min = sum(nap_time, na.rm = TRUE)
+  )
+
+# create a sleep summary table
+  t_sleep_summary <- sleep_summary |> 
+    kable(
+      col.names = c("Day of Week", "Average Nap (min)", "Total Nap (min)"),
+      align = c("l", "c", "c"),
+      caption = "Table 1: Summary of Baby Nap Duration by Day of Week"
+    )
+
+# display table
+  t_sleep_summary
+```
+
+## Discussion
+
+When looking at the baby's sleep pattern by day, the plot of nap durations across weekdays reveals that Wednesdays are the days when the baby's naps are shortest. During the first week, we can also see that when the baby didn't take a nap, the bedtime schedule was the earliest of all days in this dataset.
+
+Working with this dataset was enlightening because I got to practice on some unique commands like str_remove_all() and a more complex pivot_longer() function. I was able to figure out the pivot_longer() function by accessing Chapter 5: Data Tidying from the r4ds book found on this [website](r4ds.hadley.nz/data-tidying). Also I was able to find help on regular expressions and string manipulation from the same book Chapter 15: Regular Expressions and Chapter 14: Strings.
+
+# Visits Data
+
+Finally, we'll be working with Renee's annual health center's visits data. We begin by exploring the data
+
+```{r visits-explore}
+
+str(visits)
+```
+
+After loading and examining the visits data for the next part of the assignment, I noticed some formatting nuances in the dataset that made me question its integrity. I asked Google Gemini to help me understand what was going on, and it explained that although I saved my .txt file as a .csv file after creating it, it was saved in Rich Text format. As a result, it added the strange formatting tags like the on in the week column that looks like this, "\f0\\fs24 \cf0 Week". I also noticed that it was adding extra symbols to the observations, such as: "Wednesday Bedtime  : chr "7:30 PM\\" "8:00 PM}" ". I went back to where I saved the data and changed Renee's dataframe to Plain Text format and that downloaded the data correctly, without the extra character. Since I already did all the work to fix the dataframe from Noelle, I'm choosing to leave the dataframe in Rich Text Format as a reminder to me that I should make sure I save my data in Plain Text format. Now that I figured that out, I will proceed to work with Renee's health center dataframe that's been saved in Plain Text format.
+
+## Pivot data
+
+```{r visits-tidy}
+
+visits_tidy <- visits |> 
+  pivot_longer(
+    cols = -Clinic,
+    names_to = "Month",
+    values_to = "Counts"
+  )
+```
+
+## Analysis
+
+Now that the data is in a tidy format, we can use the data frame to construct plots that reveal overall patterns across health centers and months.
+
+```{r visits-by-clinic}
+
+# 
+ggplot(visits_tidy, aes(x = reorder(Clinic, Counts, FUN = median), y = Counts, fill = Clinic)) +
+  geom_boxplot(show.legend = FALSE, alpha = 0.7) +
+  geom_jitter(width = 0.15, alpha = 0.4, color = "black") + # shows raw monthly data points
+  coord_flip() +
+  labs(
+    title = "Distribution of Monthly Health Center Visits by Clinic",
+    subtitle = "Variation in monthly patient volume across 10 health centers",
+    x = "Health Center Clinic",
+    y = "Monthly Visit Count",
+    caption = "Source: Discussion 5A Dataset (Renee Watson)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "none")
+```
+
+```{r visits-by-month}
+
+# order months chronologically rather than alphabetically
+visits_tidy <- visits_tidy |> 
+  mutate(Month = factor(Month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")))
+
+# plot of overall monthly visits
+ggplot(visits_tidy, aes(x = Month, y = Counts)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.6) +
+  labs(
+    title = "Monthly Health Center Visit Totals Across All Clinics",
+    subtitle = "Seasonal volume distribution throughout the year",
+    x = "Month",
+    y = "Visit Count",
+    caption = "Source: Discussion 5A Dataset (Renee Watson)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+```{r visits-summary-table}
+
+# summarise visits
+visits_summary <- visits_tidy |> 
+  group_by(Clinic) |> 
+  summarise(
+    total_visits = sum(Counts),
+    avg_monthly_visits = round(mean(Counts), 1),
+  ) |> 
+  arrange(desc(total_visits))
+
+visits_summary |> 
+  kable(
+    col.names = c("Health Center Clinic", "Total Annual Visits", "Mean Monthly Visits"),
+    align = c("l", "c", "c", "c"),
+    caption = "Table 2: Annual and Monthly Visit Volume Summary by Clinic"
+  )
+```
+
+### Discussion
+
+An analysis of the annual health center visit metrics shows patient volume across both facility locations and monthly trends:
+
+- **Clinic Volume Differences:** Total patient volume varies significantly by facility. Central Community Health Center consistently recorded the highest monthly visit counts, whereas Eastside Family Clinic maintained the lowest overall patient volume throughout the year.
+
+- **Seasonal Progression:** Patient visits show a steady rising trend across the calendar year. Across all clinics, visit counts start at their lowest in January and February and then increase each month, peaking in November and December.
