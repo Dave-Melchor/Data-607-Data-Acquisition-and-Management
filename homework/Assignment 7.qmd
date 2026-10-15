@@ -1,0 +1,115 @@
+---
+title: "Data 607 Assignment: HTML and JSON Data Formats"
+author: "David Melchor"
+format: 
+  html:
+    embed-resources: true
+    toc: true
+editor: visual
+---
+
+## Introduction
+
+The objective of this assignment is to practice creating structured data files by hand and loading them into R for downstream analysis. We are using data focused on diabetes management, including titles, authors, publication years, publishers, and genres. At least one book in our dataset contains multiple authors to satisfy the assignment requirements.
+
+## Packages and Data Loading
+
+For this assignment, we use packages designed for web scraping and data parsing to load our manually created files from GitHub.
+
+```{r}
+#| label: packages
+
+# Loading packages
+pacman::p_load(rvest, jsonlite, tidyverse, knitr, kableExtra)
+```
+
+## Loading HTML Data
+
+We start by loading the data from our manually created HTML file. We use the raw version of the GitHub URL so that the rvest package can read the table directly into R.
+
+```{r}
+#| label: load-html
+
+# Use the raw version of the GitHub URL
+html_url <- "https://raw.githubusercontent.com/Dave-Melchor/Data-607-Data-Acquisition-and-Management/refs/heads/main/data/raw/books.html"
+
+# Import HTML table directly into a data frame
+html_data <- html_url |> 
+  read_html() |> 
+  html_table()
+
+html_data <- html_data[[1]]
+
+# Inspect the dataset
+str(html_data)
+```
+
+```{r}
+#| label: view-html-table
+
+# Make summary table for HTML data
+html_data |> 
+  kbl(
+    caption = "Table 1. Books Data Loaded from HTML",
+    align = c("l", "l", "c", "l", "l")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) |> 
+  column_spec(1, bold = TRUE)
+```
+
+## Loading JSON Data
+
+Next, we load the same dataset from our manually created JSON file using the jsonlite package.
+
+```{r}
+#| label: load-json
+
+# Use the raw version of the GitHub URL
+json_url <- "https://raw.githubusercontent.com/Dave-Melchor/Data-607-Data-Acquisition-and-Management/refs/heads/main/data/raw/books.json"
+
+# Import JSON data directly into a data frame
+json_data <- fromJSON(json_url)
+
+# Inspect the dataset
+str(json_data)
+```
+
+```{r}
+#| label: view-json-table
+
+# Make summary table for JSON data
+json_data |> 
+  kbl(
+    caption = "Table 2. Books Data Loaded from JSON",
+    align = c("l", "l", "c", "l", "l")
+  ) |> 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) |> 
+  column_spec(1, bold = TRUE)
+```
+
+## Comparing Data Frames
+
+The final step requires us to compare the two data frames to determine whether they are identical.
+
+```{r}
+#| label: compare-data
+
+# Check if both data frames are identical
+identical(html_data, json_data)
+```
+
+## Conclusion
+
+By manually creating both the HTML table and the JSON file, we can see how different file formats structure the same underlying information. While the data looks identical at a glance, checking them with `identical()` returns `FALSE`. This happens because `html_table()` reads all columns in as character strings by default, whereas .`json` preserves numeric data types like integers.
+
+### Citation
+
+Wickham, H., Çetinkaya-Rundel, M., & Grolemund, G. (2023). *R for Data Science* (2nd ed.). O'Reilly Media. Chapter 24: Web Scraping (Section 24.3: HTML Basics). [https://r4ds.hadley.nz/webscraping.html#html-basics](https://www.google.com/url?sa=E&source=gmail&q=https://r4ds.hadley.nz/webscraping.html#html-basics)
