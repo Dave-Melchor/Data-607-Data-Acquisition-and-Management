@@ -1,0 +1,79 @@
+---
+title: "TidyVerse Vignette: String Parsing with separate_wider_delim()"
+author: "David Melchor"
+date: today
+format:
+  html:
+    toc: true
+    code-fold: show
+    theme: cosmo
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+# packages
+pacman::p_load(tidyverse)
+```
+
+```{r}
+
+# 1. Define the raw CSV URL from FiveThirtyEight's repository
+url <- "https://raw.githubusercontent.com/fivethirtyeight/data/master/undefeated-boxers/undefeated.csv"
+
+# 2. Read the data directly from the web
+boxers_raw <- read_csv(url)
+
+# 3. Inspect the structure of the dataset
+glimpse(boxers_raw)
+```
+
+## Introduction
+
+When working with data, it's common to come across columns where multiple pieces of information are jammed together into a single character string. In some cases, it will be necessary to split those strings apart. 
+
+`separate_wider_delim()` is a function belonging to the the `tidyr` package (core to the `tidyverse`). `separate_wider_delim()` takes a single character column and splits its value into multiple new columns based on a fixed delimiter.
+
+## How It Works
+
+`separate_wide_delim` enforces that every row splits into the exact expected number of pieces. If a row has too few or too many values, it throws an informative error rather than failing silently, ensuring data integrity throughout your pipeline.
+
+## Examples of Common Delimiters
+
+A delimiter is the specific character or symbol used to separate values within a text string. Depending on your dataset, delimiters can take many forms:
+
+- Hyphen ("-"): Commonly used in dates ("2026-11-11"), ID codes, or fight records ("49-0-0").
+- Comma (","): Frequently found in CSV-style data, lists, or location strings ("San Jose, CA").
+- Period ("."): Often seen in version numbers ("1.4.2"), domain names, or IP addresses.
+- Underscore ("_"): Typical in file names, system logs, or variable naming conventions ("user_id_042").
+- Forward Slash ("/"): Used in dates ("11/11/2026"), file paths, or ratios.
+- Pipe ("|"): Standard separator in delimited text feeds or database exports ("value1|value2|value3").
+
+## Applying separate_wider_delim() to the Boxers Data
+
+Now let's put the function to work on this FiveThirtyEight dataset called `undefeated`. The date column in boxers_raw is formatted as a single string (e.g., "2015-05-02"). We will use `separate_wider_delim()` with a hyphen delimiter to break this apart into discrete year, month, and day columns.
+
+```{r}
+# Split the 'date' column and convert the new columns to integers
+boxers_clean <- boxers_raw |> 
+  separate_wider_delim(
+    cols = date,
+    delim = "-",
+    names = c("match_year", "match_month", "match_day")
+  ) |> 
+  mutate(
+    across(c(match_year, match_month, match_day), as.integer)
+  )
+
+# Preview the newly separated and typed columns
+boxers_clean |> 
+  select(name, match_year, match_month, match_day, wins) |> 
+  head(5)
+```
+
+- cols = date: Targets specifically the column we want to split.
+- delim = "-" : Tells R exactly where to slice the character string based on the hyphen separator.
+- names = c(...): Assigns clear, meaningful names to the three resulting columns.
+- mutate(across(..., as.integer)): By default, string separation outputs character data. Converting them to integers immediately afterwards is a best practice so you can easily perform numeric calculations or time-series filtering later.
+
